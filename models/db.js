@@ -1,6 +1,7 @@
-// models/db.js
-require('dotenv').config();  
-const { Client } = require('pg');  
+require('dotenv').config();
+const { Client } = require('pg');
+const fs = require('fs').promises;
+const path = require('path');
 
 const client = new Client({
   user: process.env.DB_USER,
@@ -10,20 +11,14 @@ const client = new Client({
   port: process.env.DB_PORT,
 });
 
-async function connectToDatabase() {
+async function insertData() {
   try {
-    await client.connect();
-    console.log('Kết nối thành công đến PostgreSQL!');
   } catch (error) {
-    console.error('Lỗi khi kết nối đến cơ sở dữ liệu:', error);
+    console.error("Error inserting data: ", error);
+  } finally {
+    // Đóng kết nối sau khi insert xong
+    await client.end();
   }
 }
-async function closeConnection() {
-  await client.end();
-  console.log('Đóng kết nối đến PostgreSQL');
-}
 
-module.exports = {           
-  connectToDatabase,     
-  closeConnection,     
-};
+module.exports = { insertData };
