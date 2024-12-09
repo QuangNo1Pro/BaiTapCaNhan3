@@ -18,7 +18,7 @@ async function homePage(req, res) {
           top20RevenueMovies: top20RevenueMovies,
           top20PopularMovies: top20PopularMovies,
       };
-    // Khởi tạo TemplateEngine với dữ liệu gộp
+      // Khởi tạo TemplateEngine với dữ liệu gộp
     const engine = new TemplateEngine(data,template);
     const finalContent = engine.render();
 

@@ -4,76 +4,92 @@ class TemplateEngine {
     this.template = template // Template HTML
   }
 
-  // Hàm thay thế biến trong template
-  // Hàm thay thế biến trong template
-  replaceVariables () {
-    this.template = this.template.replace(/{22296{([^{}]+)}}/g, (match, p1) => {
+  // Hàm thay thế các biến đơn giản trong template
+  replaceVariables (template, data) {
+    return template.replace(/{22296{([^{}]+)}}/g, (_, p1) => {
       const varName = p1.trim()
+      const keys = varName.split('.'); // Phân tách chuỗi các biến
+      let value = data
 
-      // Log varName để kiểm tra giá trị của nó
-      console.log('Variable name:', varName)
+      // Lặp qua các key để truy xuất giá trị
+      for (let key of keys) {
+        if (value && key in value) {
+          value = value[key]
+        } else {
+          value = undefined
+          break
+        }
+      }
 
-      let value = this.data[varName]
+      return value !== undefined ? value : ''; // Nếu không tìm thấy, trả về chuỗi rỗng
+    })
+  }
 
-      // Log giá trị tương ứng trong data
-      console.log('Value from data:', value)
+  // Hàm xử lý câu lệnh if
+  processIf (template, condition, data) {
+    return template.replace(/{22296{if (\w+)}}(.*?)\{22296{\/if}}/gs, (_, cond, content) => {
+      const value = data[cond]
+      return value ? content : ''
+    })
+  }
 
-      // Kiểm tra xem giá trị có phải là undefined, nếu có thì trả về chuỗi rỗng
-      return value !== undefined ? value : ''
+  // Hàm xử lý câu lệnh if-else
+  processIfElse (template, condition, data) {
+    return template.replace(/{22296{if (\w+)}}(.*?)\{22296{else}}(.*?)\{22296{\/if}}/gs, (_, cond, ifContent, elseContent) => {
+      const value = data[cond]
+      return value ? ifContent : elseContent
     })
   }
 
   // Hàm xử lý vòng lặp for
-  // Hàm xử lý vòng lặp for
-  processForLoops () {
+  processForLoop (template, arrayName, data) {
     const regex = /\{22296{for (\w+) in (\w+)}\}(.*?)\{22296{\/for}\}/gs
-    this.template = this.template.replace(regex, (match, loopVar, arrayName, content) => {
-      const dataArray = this.data[arrayName]; // Kiểm tra lại tên mảng
-
-      // Log để kiểm tra mảng dataArray có dữ liệu hay không
-      console.log('Processing array:', arrayName, 'with data:', dataArray)
-
+    return template.replace(regex, (_, loopVar, arrayName, content) => {
+      const dataArray = data[arrayName]; // Lấy mảng từ data
       if (Array.isArray(dataArray)) {
         return dataArray.map(item => {
-          return content.replace(/\{22296{(\w+\.\w+)}\}/g, (m, path) => {
-            const keys = path.split('.')
-            let value = item
-            for (let key of keys) {
-              value = value[key] || ''; // Truy xuất giá trị
-            }
-            return value
-          })
-        }).join(''); // Nối các phần tử lại với nhau
+          return this.replaceVariables(content, item); // Thay thế biến cho mỗi item trong mảng
+        }).join(''); // Kết nối các phần tử trong mảng thành một chuỗi
       }
-      return ''; // Nếu không phải mảng hoặc mảng rỗng, trả về chuỗi rỗng
+      return ''; // Nếu không phải mảng, trả về chuỗi rỗng
     })
   }
 
-  // Hàm xử lý ifelse
-  processIfElse () {
-    const regex = /\{22296{if (\w+)}\}(.*?)\{22296{\/if}\}/gs
-    this.template = this.template.replace(regex, (match, condition, content) => {
-      const value = this.data[condition]
-      return value ? content : ''; // Nếu điều kiện đúng, trả lại nội dung, ngược lại trả về chuỗi rỗng
+  // Hàm tự động xử lý vòng lặp for và if trong template
+  processLoopsAndConditions (template, data) {
+    let renderedTemplate = template
+
+    // Tìm và xử lý các vòng lặp 'for'
+    renderedTemplate = this.processForLoop(renderedTemplate, 'topRatedMovies', data)
+    renderedTemplate = this.processForLoop(renderedTemplate, 'topRevenueMovies', data)
+    renderedTemplate = this.processForLoop(renderedTemplate, 'topPopularMovies', data)
+
+    // Tìm và xử lý các điều kiện 'if'
+    renderedTemplate = renderedTemplate.replace(/{22296{if (\w+)}}(.*?)\{22296{\/if}}/gs, (_, cond, content) => {
+      const value = data[cond]
+      return value ? content : ''
     })
+
+    // Tìm và xử lý các điều kiện 'if-else'
+    renderedTemplate = renderedTemplate.replace(/{22296{if (\w+)}}(.*?)\{22296{else}}(.*?)\{22296{\/if}}/gs, (_, cond, ifContent, elseContent) => {
+      const value = data[cond]
+      return value ? ifContent : elseContent
+    })
+
+    return renderedTemplate
   }
 
-  // Hàm xử lý ifelse với điều kiện ngược lại (else)
-  processIfElseElse () {
-    const regex = /\{22296{if (\w+)}\}(.*?)\{22296{else}\}(.*?)\{22296{\/if}\}/gs
-    this.template = this.template.replace(regex, (match, condition, ifContent, elseContent) => {
-      const value = this.data[condition]
-      return value ? ifContent : elseContent; // Trả lại nội dung nếu điều kiện đúng hoặc nếu sai
-    })
-  }
-
-  // Render toàn bộ template
+  // Hàm render: xử lý tất cả các phần nhỏ và ghép lại
   render () {
-    this.replaceVariables(); // Thay thế biến
-    this.processForLoops(); // Xử lý vòng lặp for
-    this.processIfElse(); // Xử lý ifelse
-    this.processIfElseElse(); // Xử lý ifelse với else
-    return this.template; // Trả về template sau khi render
+    let renderedTemplate = this.template
+
+    // Tự động xử lý các vòng lặp, điều kiện và thay thế biến
+    renderedTemplate = this.processLoopsAndConditions(renderedTemplate, this.data)
+
+    // Thay thế các biến đơn giản
+    renderedTemplate = this.replaceVariables(renderedTemplate, this.data)
+
+    return renderedTemplate
   }
 }
 
